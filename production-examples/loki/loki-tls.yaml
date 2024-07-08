@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FUR...........
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FU...........
+  tls.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFU...........
+kind: Secret
+metadata:
+  namespace: observability
+  creationTimestamp: null
+  name: loki-tls

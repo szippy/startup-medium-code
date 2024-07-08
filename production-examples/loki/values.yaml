@@ -1,0 +1,570 @@
+backend:
+  replicas: 0
+
+bloomCompactor:
+  replicas: 0
+
+bloomGateway:
+  replicas: 0
+  
+chunksCache:
+  enabled: true
+  replicas: 1
+  batchSize: 4
+  parallelism: 5
+  timeout: 2000ms
+  defaultValidity: 0s
+  port: 11211
+  allocatedMemory: 8192
+  maxItemMemory: 5
+  connectionLimit: 16384
+  writebackSizeLimit: 500MB
+  writebackBuffer: 500000
+  writebackParallelism: 1
+
+compactor:
+  maxUnavailable: 1
+  replicas: 3
+  nodeSelector:
+    application-type: observability
+  terminationGracePeriodSeconds: 30
+  serviceAccount: 
+    create: false
+    name: loki-service-account
+    annotations:
+      eks.amazonaws.com/role-arn: ${lokiRoleArn}
+    automountServiceAccountToken: true
+  persistence:
+    enabled: false
+    inMemory: false
+    claims:
+      - name: data
+        size: 150Gb
+        storageClass: nul
+    enableStatefulSetAutoDeletePVC: false
+    whenDeleted: Retain
+    whenScaled: Retain
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+deploymentMode: Distributed
+
+distributor:
+  replicas: 3
+  maxUnavailable: 2
+  nodeSelector:
+    application-type: observability
+  terminationGracePeriodSeconds: 30
+  maxSurge: 0
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+gateway:
+  replicas: 3
+  maxUnavailable: 1
+  ingress:
+    enabled: true
+    verboseLogging: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/issuer: "${yourCertIssuer}"
+    hosts:
+      - host: ${yourHostname} # grafana.gamesmith.localhost
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: loki-tls
+        hosts:
+          - ${yourHostname} # grafana.gamesmith.localhost
+  basicAuth:
+    existingSecret: loki-basic-auth
+    enabled: true
+    # values in loki basic auth secret
+    #username: ${username} # YWRtaW4=
+    #password: ${password} # YWRtaW4tcGFzcw== 
+    #htpasswd: ${.htpasswd} # admin:$2y$05$Y4dETNm7VHQvPjVokNSQEOR4gxyUR0k4fF.JUBOkY7uk8Z1uQmSLO
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http-metrics
+    initialDelaySeconds: 15
+    timeoutSeconds: 1
+  nginxConfig:
+    schema: http
+    enableIPv6: true
+    logFormat: |-
+      main '$remote_addr - $remote_user [$time_local]  $status '
+              '"$request" $body_bytes_sent "$http_referer" '
+              '"$http_user_agent" "$http_x_forwarded_for"';
+    serverSnippet: ""
+    httpSnippet: >-
+      {{ if .Values.loki.tenants }}proxy_set_header X-Scope-OrgID $remote_user;{{ end }}
+    ssl: false
+    customReadUrl: null
+    customWriteUrl: null
+    customBackendUrl: null
+    resolver: ""
+    file: |
+      {{- include "loki.nginxFile" . | indent 2 -}}
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+global: {}
+
+indexGateway:
+  replicas: 2
+  maxUnavailable: 1
+  persistence:
+    enabled: false
+    inMemory: false
+    claims:
+      - name: data
+        size: 150Gi
+        storageClass: nul
+    enableStatefulSetAutoDeletePVC: false
+    whenDeleted: Retain
+    whenScaled: Retain
+  extraVolumes:
+    - name: index-data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: index-data
+      mountPath: /data
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+ingester:
+  replicas: 3
+  maxUnavailable: 1
+  terminationGracePeriodSeconds: 300
+  nodeSelector:
+    application-type: observability
+  persistence:
+    enabled: false
+    inMemory: false
+    claims:
+      - name: data
+        size: 150Gb
+        storageClass: null
+    enableStatefulSetAutoDeletePVC: false
+    whenDeleted: Retain
+    whenScaled: Retain
+  extraVolumes:
+    - name: index-data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: index-data
+      mountPath: /data
+  resources:
+    limits:
+      cpu: 10
+      memory: 16Gi
+    requests:
+      cpu: 10
+      memory: 16Gi
+
+loki:
+  schemaConfig:
+    configs:
+      - from: "2023-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  ingester:
+    chunk_encoding: snappy
+  auth_enabled: true
+  tracing:
+    enabled: true
+  querier:
+    max_concurrent: 16
+  commonConfig:
+    path_prefix: /var/loki
+    replication_factor: 3
+    compactor_address: '{{ include "loki.compactorAddress" . }}'
+  storage: 
+    bucketNames:
+      chunks: "${LokiBucketName}/chunks"
+      ruler: "${LokiBucketName}/ruler"
+      admin: "${LokiBucketName}/admin"
+    type: s3
+    s3:
+      s3: "s3.us-east-1.amazonaws.com"
+      region: "us-east-1"
+      signatureVersion: null
+      s3ForcePathStyle: false
+      insecure: false
+    filesystem:
+      chunks_directory: /var/loki/chunks
+      rules_directory: /var/loki/rules
+      admin_api_directory: /var/loki/admin
+  storage_config:
+    boltdb_shipper:
+      active_index_directory: /var/loki/index
+      cache_location: /var/loki/cache
+      cache_ttl: 168h
+      index_gateway_client:
+        server_address: '{{ include "loki.indexGatewayAddress" . }}'
+    tsdb_shipper:
+      active_index_directory: /data/tsdb-index
+      cache_location: /data/tsdb-cache
+      index_gateway_client:
+        server_address: '{{ include "loki.indexGatewayAddress" . }}'
+    hedging:
+      at: "250ms"
+      max_per_second: 20
+      up_to: 3
+    filesystem:
+      directory: /var/loki/chunks
+    aws: 
+      s3: s3.us-east-1.amazonaws.com
+      region: "us-east-1"
+      bucketnames: ${LokiBucketName}
+      s3forcepathstyle: false
+      insecure: false
+  server:
+    http_listen_port: 3100
+    log_level: debug
+    grpc_server_max_recv_msg_size: 104857600
+    grpc_server_max_send_msg_size: 104857608
+    grpc_server_max_concurrent_streams: 10000
+  limits_config:
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_cache_freshness_per_query: 10m
+    split_queries_by_interval: 15m
+    query_timeout: 300s
+    volume_enabled: true
+    allow_structured_metadata: true
+    per_stream_rate_limit: 2048M
+    per_stream_rate_limit_burst: 4096M
+    cardinality_limit: 500000
+    max_streams_per_user: 500000
+    ingestion_rate_mb: 200000
+    ingestion_burst_size_mb: 400000
+    max_concurrent_tail_requests: 100
+    max_entries_limit_per_query: 1000000
+    max_global_streams_per_user: 100000
+    max_label_value_length: 20480
+    max_label_name_length: 10240
+    max_label_names_per_series: 1400
+    ingestion_rate_strategy: "local"
+  compactor: 
+    compaction_interval: 10m
+    retention_enabled: true
+    retention_delete_delay: 2h
+    retention_delete_worker_count: 150
+    delete_request_store: s3
+  memcached: 
+    chunk_cache:
+      enabled: true
+      host: ""
+      service: "memcached-client"
+      batch_size: 256
+      parallelism: 10
+    results_cache:
+      enabled: true
+      host: ""
+      service: "memcached-client"
+      timeout: "500ms"
+      default_validity: "12h"
+  query_scheduler: 
+    max_outstanding_requests_per_tenant: 32768
+  config: |
+    {{- if .Values.enterprise.enabled}}
+    {{- tpl .Values.enterprise.config . }}
+    {{- else }}
+    auth_enabled: {{ .Values.loki.auth_enabled }}
+    {{- end }}
+
+    {{- with .Values.loki.server }}
+    server:
+      {{- toYaml . | nindent 2}}
+    {{- end}}
+
+    pattern_ingester:
+      enabled: {{ .Values.loki.pattern_ingester.enabled }}
+
+    memberlist:
+    {{- if .Values.loki.memberlistConfig }}
+      {{- toYaml .Values.loki.memberlistConfig | nindent 2 }}
+    {{- else }}
+    {{- if .Values.loki.extraMemberlistConfig}}
+    {{- toYaml .Values.loki.extraMemberlistConfig | nindent 2}}
+    {{- end }}
+      join_members:
+        - {{ include "loki.memberlist" . }}
+        {{- with .Values.migrate.fromDistributed }}
+        {{- if .enabled }}
+        - {{ .memberlistService }}
+        {{- end }}
+        {{- end }}
+    {{- end }}
+
+    {{- with .Values.loki.ingester }}
+    ingester:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- if .Values.loki.commonConfig}}
+    common:
+    {{- toYaml .Values.loki.commonConfig | nindent 2}}
+      storage:
+      {{- include "loki.commonStorageConfig" . | nindent 4}}
+    {{- end}}
+
+    {{- with .Values.loki.limits_config }}
+    limits_config:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    runtime_config:
+      file: /etc/loki/runtime-config/runtime-config.yaml
+
+    {{- with .Values.chunksCache }}
+    {{- if .enabled }}
+    chunk_store_config:
+      chunk_cache_config:
+        default_validity: {{ .defaultValidity }}
+        background:
+          writeback_goroutines: {{ .writebackParallelism }}
+          writeback_buffer: {{ .writebackBuffer }}
+          writeback_size_limit: {{ .writebackSizeLimit }}
+        memcached:
+          batch_size: {{ .batchSize }}
+          parallelism: {{ .parallelism }}
+        memcached_client:
+          addresses: dnssrvnoa+_memcached-client._tcp.{{ template "loki.fullname" $ }}-chunks-cache.{{ $.Release.Namespace }}.svc
+          consistent_hash: true
+          timeout: {{ .timeout }}
+          max_idle_conns: 72
+    {{- end }}
+    {{- end }}
+
+    {{- if .Values.loki.schemaConfig }}
+    schema_config:
+    {{- toYaml .Values.loki.schemaConfig | nindent 2}}
+    {{- end }}
+
+    {{- if .Values.loki.useTestSchema }}
+    schema_config:
+    {{- toYaml .Values.loki.testSchemaConfig | nindent 2}}
+    {{- end }}
+
+    {{ include "loki.rulerConfig" . }}
+
+    {{- if or .Values.tableManager.retention_deletes_enabled .Values.tableManager.retention_period }}
+    table_manager:
+      retention_deletes_enabled: {{ .Values.tableManager.retention_deletes_enabled }}
+      retention_period: {{ .Values.tableManager.retention_period }}
+    {{- end }}
+
+    query_range:
+      align_queries_with_step: true
+      {{- with .Values.loki.query_range }}
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+      {{- end }}
+      {{- if .Values.resultsCache.enabled }}
+      {{- with .Values.resultsCache }}
+      cache_results: true
+      results_cache:
+        cache:
+          default_validity: {{ .defaultValidity }}
+          background:
+            writeback_goroutines: {{ .writebackParallelism }}
+            writeback_buffer: {{ .writebackBuffer }}
+            writeback_size_limit: {{ .writebackSizeLimit }}
+          memcached_client:
+            consistent_hash: true
+            addresses: dnssrvnoa+_memcached-client._tcp.{{ template "loki.fullname" $ }}-results-cache.{{ $.Release.Namespace }}.svc
+            timeout: {{ .timeout }}
+            update_interval: 1m
+      {{- end }}
+      {{- end }}
+
+    {{- with .Values.loki.storage_config }}
+    storage_config:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- with .Values.loki.query_scheduler }}
+    query_scheduler:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- with .Values.loki.compactor }}
+    compactor:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- with .Values.loki.analytics }}
+    analytics:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- with .Values.loki.querier }}
+    querier:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- with .Values.loki.index_gateway }}
+    index_gateway:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- with .Values.loki.frontend }}
+    frontend:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- with .Values.loki.frontend_worker }}
+    frontend_worker:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    {{- with .Values.loki.distributor }}
+    distributor:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+    tracing:
+      enabled: {{ .Values.loki.tracing.enabled }}
+
+lokiCanary:
+  enabled: false
+
+memcached:
+  image:
+    repository: memcached
+    tag: 1.6.23-alpine
+    pullPolicy: IfNotPresent
+  podSecurityContext:
+    fsGroup: 11211
+    runAsGroup: 11211
+    runAsNonRoot: true
+    runAsUser: 11211
+    containerSecurityContext:
+  priorityClassName: null
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+    allowPrivilegeEscalation: false
+
+minio:
+  enabled: false
+
+monitoring:
+  selfMonitoring:
+    enabled: false
+
+querier:
+  replicas: 3
+  maxUnavailable: 2
+  nodeSelector:
+    application-type: observability
+  terminationGracePeriodSeconds: 30
+  persistence:
+    enabled: false
+    inMemory: false
+    claims:
+      - name: data
+        size: 150Gi
+        storageClass: null
+    enableStatefulSetAutoDeletePVC: false
+    whenDeleted: Retain
+    whenScaled: Retain
+  resources:
+    limits:
+      cpu: 6
+      memory: 8Gi
+    requests:
+      cpu: 6
+      memory: 6Gi
+
+queryFrontend:
+  replicas: 3
+  maxUnavailable: 1
+  nodeSelector:
+    application-type: observability
+  terminationGracePeriodSeconds: 30
+  maxSurge: 0
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+queryScheduler:
+  replicas: 3
+  maxUnavailable: 1
+  nodeSelector:
+    application-type: observability
+  terminationGracePeriodSeconds: 30
+  maxSurge: 0
+  resources:
+    limits:
+      cpu: 3
+      memory: 6Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+read:
+  replicas: 0
+
+resultsCache:
+  enabled: true
+  replicas: 1
+  maxUnavailable: 1
+  defaultValidity: 12h
+  timeout: 500ms
+  port: 11211
+  allocatedMemory: 1024
+  maxItemMemory: 5
+  connectionLimit: 16384
+  writebackSizeLimit: 500MB
+  writebackBuffer: 500000
+  writebackParallelism: 1
+
+serviceAccount: 
+  create: true
+  name: loki-service-account
+  annotations:
+    eks.amazonaws.com/role-arn: ${yourAwsRole}
+  automountServiceAccountToken: true
+
+singleBinary:
+  replicas: 0
+
+# Required to disable helm test which is spotty in distributed right now 
+test: 
+  enabled: false
+
+write:
+  replicas: 0

@@ -1,0 +1,556 @@
+alertmanager:
+  enabled: false
+
+chunks-cache:
+  enabled: true
+  replicas: 1
+  maxUnavailable: 1
+  maxItemMemory: 5
+  allocatedMemory: 4096
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "chunks-cache"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - chunks-cache
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 1200m
+      memory: 8Gi
+    requests:
+      cpu: 1200m
+      memory: 6Gi
+
+compactor:
+  replicas: 1
+  maxUnavailable: 1
+  persistentVolume:
+    size: 150Gi
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "compactor"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - compactor
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+distributor:
+  replicas: 3
+  maxUnavailable: 1
+  service:
+    annotations:
+      service.kubernetes.io/topology-aware-hints: auto
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "distributor"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - distributor
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+gateway:
+  replicas: 1
+  # maxUnavailable: 1
+
+global:
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+
+index-cache:
+  enabled: true
+  replicas: 3
+  maxUnavailable: 1
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "index-cache"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - index-cache
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 1200m
+      memory: 8Gi
+    requests:
+      cpu: 1200m
+      memory: 6Gi
+
+ingester:
+  extraArgs:
+    blocks-storage.tsdb.flush-blocks-on-shutdown: true
+    ingester.ring.unregister-on-shutdown: true
+  zoneAwareReplication:
+    enabled: false
+  persistentVolume:
+    size: 150Gi
+  replicas: 3
+  maxUnavailable: 1
+  priorityClassName: monitoring
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "ingester"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - ingester
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 8
+      memory: 16Gi
+    requests:
+      cpu: 8
+      memory: 12Gi
+
+metadata-cache:
+  enabled: true
+  maxItemMemory: 5
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "metadata-cache"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - metadata-cache
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 1200m
+      memory: 8Gi
+    requests:
+      cpu: 1200m
+      memory: 6Gi
+
+metaMonitoring:
+  serviceMonitor:
+    enabled: enable
+    interval: 60s
+
+mimir:
+  structuredConfig:
+    frontend:
+      parallelize_shardable_queries: true
+    querier:
+      shuffle_sharding_ingesters_enabled: true
+      query_store_after: 5h
+    alertmanager_storage:
+      backend: s3
+      s3: 
+        endpoint: "s3.us-east-1.amazonaws.com"
+        bucket_name: ${mimir-ruler-bucket-name}
+    blocks_storage:
+      bucket_store:
+        ignore_blocks_within: 4h
+        ignore_deletion_mark_delay: 30m
+        sync_interval: 5m
+        bucket_index:
+          max_stale_period: 2h
+      tsdb:
+        wal_compression_enabled: true
+        wal_segment_size_bytes: 536870912
+        retention_period: 13h
+        early_head_compaction_min_in_memory_series: 500000
+      s3:
+        endpoint: "s3.us-east-1.amazonaws.com"
+        bucket_name: ${mimir-bucket-name}
+    ruler_storage:
+      s3:
+        endpoint: "s3.us-east-1.amazonaws.com"
+        bucket_name: ${mimir-ruler-bucket-name}
+    limits:
+      compactor_split_and_merge_shards: 4
+      compactor_split_groups: 8
+      max_global_series_per_user: 0
+      max_global_series_per_metric: 0
+      ingestion_rate: 20000
+      ingestion_burst_size: 400000
+      out_of_order_time_window: 5m
+      max_label_names_per_series: 30
+      ingestion_tenant_shard_size: 24000000
+      store_gateway_tenant_shard_size: 30
+      ruler_tenant_shard_size: 8
+      compactor_tenant_shard_size: 4
+      max_fetched_chunks_per_query: 0
+      max_total_query_length: 720h
+      query_ingesters_within: 6h
+    ingester_client:
+      grpc_client_config:
+        grpc_compression: snappy
+    compactor:
+      block_ranges:
+        - 30m
+        - 6h
+        - 24h
+      compaction_interval: 15m
+      compaction_concurrency: 4
+      first_level_compaction_wait_period: 10m
+      deletion_delay: 8h
+      cleanup_interval: 30m
+    ingester:
+      instance_limits:
+        max_inflight_push_requests: 1000000
+        max_series: 1000000
+      active_series_metrics_idle_timeout: 5m
+
+    distributor:
+      max_recv_msg_size: 268435456
+      remote_timeout: 10s
+      instance_limits:
+        max_inflight_push_requests: 1000000000
+        max_inflight_push_requests: 1000000000
+      ring:
+        heartbeat_period: 1m
+        heartbeat_timeout: 4m
+
+minio:
+  enabled: false
+
+nginx:
+  replicas: 3
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: ${yourCertIssuer}
+      nginx.ingress.kubernetes.io/auth-realm: Authentication Required
+      nginx.ingress.kubernetes.io/auth-secret: nginx-basic-auth
+      nginx.ingress.kubernetes.io/auth-type: basic
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        more_set_input_headers "X-Scope-OrgID: $remote_user";
+    hosts:
+      - host: ${yourHostname} # mimir.gamesmith.localhost
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: mimir-tls
+        hosts:
+          - ${yourHostname}  # mimir.gamesmith.localhost
+  resources:
+    limits:
+      cpu: 8
+      memory: 16Gi
+    requests:
+      cpu: 8
+      memory: 12Gi
+
+overrides_exporter:
+  enabled: false
+
+querier:
+  replicas: 3
+  maxUnvailable: 1
+  priorityClassName: monitoring
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "querier"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - querier
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+query_frontend:
+  replicas: 3
+  maxUnavailable: 1
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "query-frontend"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - query-frontend
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
+
+query_scheduler:
+  replicas: 1
+  # maxUnavailable: 1
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "query-scheduler"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - query-scheduler
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 16Gi
+    requests:
+      cpu: 1200m
+      memory: 18Gi
+
+results-cache:
+  enabled: true
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "results-cache"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - results-cache
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 1200m
+      memory: 8Gi
+    requests:
+      cpu: 1200m
+      memory: 6Gi
+
+rollout_operator:
+  enabled: false
+
+ruler:
+  enabled: false
+
+serviceAccount:
+  create: false
+  name: mimir-service-account
+  annotations:
+    eks.amazonaws.com/role-arn: ${mimirRoleArn}
+
+store_gateway:
+  persistentVolume:
+    size: 100Gi
+  replicas: 1
+  # maxUnavailable: 1
+  zoneAwareReplication:
+    enabled: false
+  podLabels:
+    application-type: "observability"
+    application: "mimir"
+    microservice: "store-gateway"
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: "application-type"
+              operator: In
+              values:
+              - observability
+          topologyKey: "kubernetes.io/hostname"
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: "microservice"
+            operator: In
+            values:
+            - store-gateway
+        topologyKey: "kubernetes.io/hostname"
+  resources:
+    limits:
+      cpu: 3
+      memory: 8Gi
+    requests:
+      cpu: 3
+      memory: 6Gi
