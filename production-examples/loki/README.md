@@ -30,6 +30,7 @@ Creating the AWS Role:
 
 https://docs.aws.amazon.com/eks/latest/userguide/associate-service-account-role.html
 
+```
 IAM Role Policy Permissions:
   statement {
     effect  = "Allow"
@@ -46,9 +47,10 @@ IAM Role Policy Permissions:
       "loki-bucket-arn/*"
     ]
   }
-
+```
 
 IAM Assume Role 
+```
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -66,9 +68,10 @@ IAM Assume Role
       }
     ]
 }
-
+```
 
 Bucket Permissions: 
+```
 {
     "Version" : "2012-10-17",
     "Statement" : [
@@ -95,7 +98,7 @@ Bucket Permissions:
     ]
 
   }
-
+```
 
 Promtail will be configured to send logs to Loki, but you can also use Alloy, Otel, or the Grafana Agent to send additional logs to Loki 
 https://grafana.com/docs/loki/latest/send-data/
