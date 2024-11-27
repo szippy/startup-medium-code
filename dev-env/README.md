@@ -2,11 +2,7 @@ https://k3d.io/v5.4.2/#quick-start
 
 Dependencies:
 
-`brew install k3d`
-`brew install kubectl`
-`brew install dnsmasq`
-`brew install argocd`
-`brew install helm`
+`brew install k3d kubectl dnsmasq argocd helm`
 
 # Setting Up K3d:
 
@@ -18,7 +14,6 @@ From the local directory run
 your cluster name will be szippy-dev
 you can access it with:
 
-`kubectl get cluster-info`
 `kubectl get nodes`
 `kubectl get ns`
 
@@ -30,6 +25,57 @@ docker push k3d-szippy-registry.localhost:12345/mynginx:v0.1
 
 kubectl run mynginx --image k3d-szippy-registry.localhost:12345/mynginx:v0.1
 ```
+
+# Argocd Setup 
+Argocd is the deployment platform for this setup
+https://argoproj.github.io/cd/
+and uses kustomize for easier deployment and customization
+
+
+argocd admin initial-password -n argocd
+
+argocd login <ARGOCD_SERVER>
+
+argocd account update-password
+
+
+To access argo run:
+`kubectl port-forward -n argocd svc/argocd-server 8080:443`
+
+go to `argocd.localhost:8080` to view your argo application
+
+Your username is `admin`
+and your password is pulled with:
+
+`kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo`
+
+or `argocd admin initial-password -n argocd`
+
+login through the commandline with:
+
+`argocd login cd.argoproj.io:8080`
+
+I had to do the following, which was annoying and not automated yet:
+
+argocd login cd.argoproj.io:8080
+WARNING: server certificate had error: tls: failed to verify certificate: x509: certificate signed by unknown authority. Proceed insecurely (y/n)? y
+
+Username: admin
+Password: get from above
+
+If you want to follow the UI instructions go here:
+
+https://argo-cd.readthedocs.io/en/stable/getting_started/#ingress
+
+view app status with:
+
+`argocd app get guestbook`
+
+Sync it with:
+
+`argocd app sync guestbook`
+
+curl localhost:8081/argo
 
 # WHEN YOUR LAPTOP RESTARTS
 
@@ -83,22 +129,7 @@ curl localhost:8081/
 
 `sh ./dev-env/setup/build-images.sh` from the local directory.
 
-# Argocd Setup 
-argocd admin initial-password -n argocd
 
-argocd login <ARGOCD_SERVER>
-
-argocd account update-password
-
-add the new cluster: 
-
-kubectl config get-contexts -o name
-
-argocd cluster add docker-desktop
-
-kubectl config set-context --current --namespace=argocd
-
-argocd app create guestbook --repo https://github.com/argoproj/argocd-example-apps.git --path guestbook --dest-server https://kubernetes.default.svc --dest-namespace default
 
 # Kubernetes Commands
 
@@ -121,68 +152,7 @@ Swap get for describe to get a complete description of the object, and all event
 
 For Later:
 
-Argocd:
 
-Argocd is the deployment platform for this setup
-https://argoproj.github.io/cd/
-and uses kustomize for easier deployment and customization
-
-To access argo run:
-`kubectl port-forward -n argocd svc/argocd-server 8080:443`
-
-go to `argocd.localhost:8080` to view your argo application
-
-Your username is `admin`
-and your password is pulled with:
-
-`kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo`
-
-login through the commandline with:
-
-`argocd login cd.argoproj.io:8080`
-
-I had to do the following, which was annoying and not automated yet:
-
-argocd login cd.argoproj.io:8080
-WARNING: server certificate had error: tls: failed to verify certificate: x509: certificate signed by unknown authority. Proceed insecurely (y/n)? y
-
-Username: admin
-Password: U-zSsnQJPMfWbKa4
-
-argocd admin initial-password -n argocd
-
-'admin:login' logged in successfully
-Context 'cd.argoproj.io:8080' updated
-s% kubectl config get-contexts -o name
-k3d-gamesmith-dev
-
-argocd cluster add k3d-szippy-dev --insecure --in-cluster -y
-
-Here are some Argo Examples:
-
-https://github.com/argoproj/argocd-example-apps/tree/master/helm-guestbook/templates
-
-IGNORE THIS
-this repo is dumb, add a better one
-
-We have to run argo deployments from a github repo, so that argo can update as the github repo updates. Deploy it with:
-
-`kubectl config set-context --current --namespace=argocd`
-`argocd app create guestbook --repo https://github.com/argoproj/argocd-example-apps.git --path guestbook --dest-server https://kubernetes.default.svc --dest-namespace default`
-
-If you want to follow the UI instructions go here:
-
-https://argo-cd.readthedocs.io/en/stable/getting_started/#ingress
-
-view app status with:
-
-`argocd app get guestbook`
-
-Sync it with:
-
-`argocd app sync guestbook`
-
-curl localhost:8081/argo
 
 Create Cmd.
 
