@@ -1,0 +1,25 @@
+release "mimir" uninstalled
+sarah@Sarahs-MacBook-Pro mimir % helm install -n observability mimir grafana/mimir-distributed --values dev.yaml --version 5.3.0
+W0623 21:52:38.301331   35848 warnings.go:70] metadata.name: this is used in Pod names and hostnames, which can result in surprising behavior; a DNS label is recommended: [must not contain dots]
+NAME: mimir
+LAST DEPLOYED: Sun Jun 23 21:52:36 2024
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 1
+NOTES:
+Welcome to Grafana Mimir!
+Remote write endpoints for Prometheus or Grafana Agent:
+From outside the cluster via ingress:
+  http://mimir.gamesmith.localhost/api/v1/push
+
+From inside the cluster:
+  http://mimir-nginx.observability.svc:80/api/v1/push
+
+Read address, Grafana data source (Prometheus) URL:
+From outside the cluster via ingress:
+  http://mimir.gamesmith.localhost/prometheus
+
+From inside the cluster:
+  http://mimir-nginx.observability.svc:80/prometheus
+
+**IMPORTANT**: Always consult CHANGELOG.md file at https://github.com/grafana/mimir/blob/main/operations/helm/charts/mimir-distributed/CHANGELOG.md and the deprecation list there to learn about breaking changes that require action during upgrade.

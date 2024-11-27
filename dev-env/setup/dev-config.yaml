@@ -1,0 +1,36 @@
+apiVersion: k3d.io/v1alpha4 
+kind: Simple 
+metadata:
+  name: szippy-dev # (will still be prefixed with `k3d-`)
+servers: 3 
+agents: 2 
+kubeAPI:
+  hostPort: "6550" # where the Kubernetes API listening port will be mapped to on your host system
+ports:
+  - port: 8081:80
+    nodeFilters:
+      - loadbalancer
+env:
+  - envVar: ENVIRONMENT=local 
+    nodeFilters:
+      - server:*
+  - envVar: CLUSTER_NAME=szippy-dev 
+    nodeFilters:
+      - server:*
+registries: # define how registries should be created or used
+  use:
+    - k3d-szippy-registry.localhost:12345 
+options:
+  k3s: # options passed on to K3s itself
+    nodeLabels:
+      - label: szippy_label=app # We could use this to set up node affinity so that our DB can be on different servers.
+        nodeFilters:
+          - agent:1
+  kubeconfig:
+    updateDefaultKubeconfig: true 
+    switchCurrentContext: true 
+  runtime: # runtime (docker) specific options
+    labels:
+      - label: environment=k3d # same as `--runtime-label 'bar=baz@agent:1'` -> this results in a runtime (docker) container label
+        nodeFilters:
+          - agent:*

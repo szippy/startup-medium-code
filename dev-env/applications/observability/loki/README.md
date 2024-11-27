@@ -1,0 +1,1 @@
+https://github.com/grafana/loki/blob/helm-loki-6.6.2/production/helm/loki/Chart.yaml

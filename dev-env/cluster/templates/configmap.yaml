@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: szippy-api-configmap
+  namespace: szippy
+data:
+  database_url: mongo-nodeport-svc
+  node_env: development
+  skip_auth: 'false'
+  aws_region: us-east-1
+  aws_s3_bucket_name: development-map-store
+  masterwork_api: http://masterwork.gamesmith.localhost:8081
+  worldbuilder_api: http://worldbuilder.gamesmith.localhost:8081
+  auth_api_identifier: https://rptools.dev/ai-api
